@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Kod Tarama Modülü — mr.sigorta.com</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #3b82f6;
+      --primary-bg: #eff6ff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    .header { background: var(--primary); color: #fff; padding: 0.9rem 2rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .header svg { flex-shrink: 0; }
+    .header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: .3px; }
+    .header span { font-size: .8rem; opacity: .75; margin-left: .25rem; }
+
+    /* LAYOUT */
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.75rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* CARD */
+    .card { background: var(--card); border-radius: var(--radius); padding: 1.4rem 1.5rem; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .card-title { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .card-title .step { background: var(--primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; flex-shrink: 0; }
+
+    /* DROP ZONE */
+    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: #f8fafc; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--primary-light); background: var(--primary-bg); }
+    .drop-zone .dz-icon { font-size: 2.2rem; margin-bottom: .5rem; }
+    .drop-zone p { color: var(--muted); font-size: .875rem; margin-bottom: .75rem; }
+    .drop-zone input[type=file] { display: none; }
+    .btn-upload { background: var(--primary); color: #fff; border: none; padding: .55rem 1.25rem; border-radius: 6px; font-size: .85rem; font-weight: 600; cursor: pointer; transition: background .15s; }
+    .btn-upload:hover { background: #1d4ed8; }
+    .fmt-note { font-size: .75rem; color: var(--muted); margin-top: .5rem; }
+
+    /* FILE LIST */
+    .file-list { margin-top: .9rem; display: flex; flex-direction: column; gap: .4rem; }
+    .file-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .75rem; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); font-size: .82rem; }
+    .file-ext { background: var(--primary); color: #fff; font-size: .65rem; font-weight: 700; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
+    .file-ext.pdf { background: #dc2626; }
+    .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size { color: var(--muted); font-size: .75rem; flex-shrink: 0; }
+    .file-remove { margin-left: .25rem; background: none; border: none; color: var(--danger); cursor: pointer; font-size: .95rem; padding: 0 4px; line-height: 1; flex-shrink: 0; }
+    .file-count { margin-top: .5rem; font-size: .78rem; color: var(--muted); }
+
+    /* FIELDS */
+    .fields-top { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; }
+    .btn-link { background: none; border: none; color: var(--primary-light); font-size: .8rem; cursor: pointer; text-decoration: underline; padding: 0; }
+    .fields-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: .5rem; }
+    .field-item { display: flex; align-items: center; gap: .5rem; padding: .55rem .75rem; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s; user-select: none; font-size: .84rem; }
+    .field-item:hover { border-color: var(--primary-light); background: var(--primary-bg); }
+    .field-item.checked { border-color: var(--primary); background: var(--primary-bg); }
+    .field-item input[type=checkbox] { display: none; }
+    .checkmark { width: 15px; height: 15px; border: 2px solid var(--border); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; background: #fff; flex-shrink: 0; transition: all .15s; }
+    .field-item.checked .checkmark { background: var(--primary); border-color: var(--primary); }
+
+    /* SCAN ROW */
+    .scan-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .btn-scan { background: var(--primary); color: #fff; border: none; padding: .75rem 2rem; border-radius: 8px; font-size: .95rem; font-weight: 700; cursor: pointer; transition: background .15s; display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+    .btn-scan:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-scan:disabled { background: #94a3b8; cursor: not-allowed; }
+    .progress-wrap { flex: 1; min-width: 180px; }
+    .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary-light); border-radius: 4px; transition: width .3s; width: 0%; }
+    .progress-text { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+
+    /* SUMMARY */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+    .sum-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; text-align: center; }
+    .sum-card .num { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+    .sum-card .lbl { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+    .sum-card.blue .num { color: var(--primary); }
+    .sum-card.green .num { color: var(--success); }
+    .sum-card.red .num { color: var(--danger); }
+    .sum-card.yellow .num { color: var(--warning); }
+    .sum-card.gray .num { color: var(--muted); }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; max-height: 480px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    thead th { background: #f1f5f9; padding: .65rem 1rem; text-align: left; font-weight: 700; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+    tbody td { padding: .6rem 1rem; border-bottom: 1px solid var(--border); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8fafc; }
+    td a { color: var(--primary-light); text-decoration: none; }
+    td a:hover { text-decoration: underline; }
+    .dash { color: var(--border); }
+
+    /* STATUS BADGES */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+    .badge-ok     { background: #dcfce7; color: #15803d; }
+    .badge-part   { background: #fef9c3; color: #854d0e; }
+    .badge-ham    { background: #dbeafe; color: #1d4ed8; }
+    .badge-none   { background: #f1f5f9; color: #64748b; }
+    .badge-error  { background: #fee2e2; color: #b91c1c; }
+    .badge-unsup  { background: #f3e8ff; color: #7c3aed; }
+
+    /* EXPORT */
+    .export-row { display: flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap; }
+    .btn-export { padding: .6rem 1.2rem; border-radius: 7px; border: none; font-size: .85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; transition: opacity .15s; }
+    .btn-excel { background: #16a34a; color: #fff; }
+    .btn-excel:hover { opacity: .88; }
+    .btn-csv { background: #0369a1; color: #fff; }
+    .btn-csv:hover { opacity: .88; }
+
+    /* EMPTY STATE */
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: .9rem; }
+    .empty .big { font-size: 2.5rem; margin-bottom: .5rem; }
+
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      .card { padding: 1rem; }
+      .scan-row { flex-direction: column; align-items: stretch; }
+      .btn-scan { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+    <path d="M14 14h2v2h-2z"/><path d="M18 14h3"/><path d="M14 18h2"/><path d="M18 18h3"/><path d="M20 14v3"/>
+  </svg>
+  <h1>QR Kod Tarama Modülü <span>— mr.sigorta.com</span></h1>
+</header>
+
+<main class="container">
+
+  <!-- 1. DOSYA YÜKLEME -->
+  <div class="card">
+    <div class="card-title"><span class="step">1</span> Dosya Yükle</div>
+    <div class="drop-zone" id="drop-zone">
+      <div class="dz-icon">📂</div>
+      <p>Dosyaları buraya sürükleyin veya aşağıdan seçin</p>
+      <button class="btn-upload" onclick="document.getElementById('file-input').click()">Dosya Seç</button>
+      <input type="file" id="file-input" multiple accept=".jpg,.jpeg,.png,.pdf,.bmp,.webp,.tiff,.tif" />
+      <div class="fmt-note">Desteklenen formatlar: JPG · JPEG · PNG · PDF · BMP · WEBP · TIFF</div>
+    </div>
+    <div class="file-list" id="file-list"></div>
+    <div class="file-count" id="file-count"></div>
+  </div>
+
+  <!-- 2. ALAN SEÇİMİ -->
+  <div class="card">
+    <div class="card-title"><span class="step">2</span> Çıktı Alanlarını Seç</div>
+    <div class="fields-top">
+      <button class="btn-link" onclick="selectAll()">Tümünü Seç</button>
+      <span style="color:var(--border)">|</span>
+      <button class="btn-link" onclick="clearAll()">Temizle</button>
+    </div>
+    <div class="fields-grid" id="fields-grid"></div>
+  </div>
+
+  <!-- 3. TARA -->
+  <div class="card">
+    <div class="card-title"><span class="step">3</span> Tara</div>
+    <div class="scan-row">
+      <button class="btn-scan" id="scan-btn" onclick="scan()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        QR Verilerini Tara
+      </button>
+      <div class="progress-wrap" id="progress-wrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SONUÇLAR -->
+  <div class="card" id="results-section" style="display:none">
+    <div class="card-title"><span class="step">4</span> Sonuçlar</div>
+    <div id="summary"></div>
+    <div id="results-table"></div>
+    <div class="export-row">
+      <button class="btn-export btn-excel" onclick="exportExcel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Excel İndir
+      </button>
+      <button class="btn-export btn-csv" onclick="exportCSV()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV İndir
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── TANIMLAR ──────────────────────────────────────────
+  const FIELDS = [
+    { key: 'ham_icerik',      label: 'Ham QR İçeriği' },
+    { key: 'dogrulama_linki', label: 'Doğrulama Linki' },
+    { key: 'belge_seri_no',   label: 'Belge Seri No' },
+    { key: 'referans_no',     label: 'Referans No' },
+    { key: 'plaka',           label: 'Plaka' },
+    { key: 'sase_no',         label: 'Şase No' },
+    { key: 'ad_soyad',        label: 'Ad Soyad / Ünvan' },
+    { key: 'tc_vergi_no',     label: 'TC / Vergi No' },
+    { key: 'belge_turu',      label: 'Belge Türü' },
+    { key: 'veri_tipi',       label: 'QR Veri Tipi' },
+  ];
+  const FIELD_MAP = Object.fromEntries(FIELDS.map(f => [f.key, f.label]));
+
+  let files = [];
+  let lastResults = null;
+
+  // ── ALAN KUTULARI ──────────────────────────────────────
+  function initFields() {
+    const grid = document.getElementById('fields-grid');
+    FIELDS.forEach(f => {
+      const label = document.createElement('label');
+      label.className = 'field-item checked';
+      label.innerHTML = `<input type="checkbox" value="${f.key}" checked /><span class="checkmark">✓</span><span>${f.label}</span>`;
+      label.querySelector('input').addEventListener('change', function () {
+        label.classList.toggle('checked', this.checked);
+        label.querySelector('.checkmark').textContent = this.checked ? '✓' : '';
+      });
+      grid.appendChild(label);
+    });
+  }
+
+  function selectAll() {
+    document.querySelectorAll('#fields-grid input[type=checkbox]').forEach(cb => {
+      cb.checked = true;
+      const item = cb.closest('.field-item');
+      item.classList.add('checked');
+      item.querySelector('.checkmark').textContent = '✓';
+    });
+  }
+
+  function clearAll() {
+    document.querySelectorAll('#fields-grid input[type=checkbox]').forEach(cb => {
+      cb.checked = false;
+      const item = cb.closest('.field-item');
+      item.classList.remove('checked');
+      item.querySelector('.checkmark').textContent = '';
+    });
+  }
+
+  function getSelectedFields() {
+    return [...document.querySelectorAll('#fields-grid input[type=checkbox]:checked')].map(cb => cb.value);
+  }
+
+  // ── DOSYA YÖNETİMİ ─────────────────────────────────────
+  function addFiles(newFiles) {
+    for (const f of newFiles) {
+      if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f);
+    }
+    renderFiles();
+  }
+
+  function removeFile(idx) {
+    files.splice(idx, 1);
+    renderFiles();
+  }
+
+  function renderFiles() {
+    const list = document.getElementById('file-list');
+    const count = document.getElementById('file-count');
+    if (!files.length) { list.innerHTML = ''; count.textContent = ''; return; }
+    list.innerHTML = files.map((f, i) => {
+      const ext = f.name.split('.').pop().toUpperCase();
+      const size = f.size < 1048576 ? (f.size / 1024).toFixed(1) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB';
+      const cls = ext === 'PDF' ? 'pdf' : '';
+      return `<div class="file-item">
+        <span class="file-ext ${cls}">${ext}</span>
+        <span class="file-name" title="${f.name}">${f.name}</span>
+        <span class="file-size">${size}</span>
+        <button class="file-remove" onclick="removeFile(${i})" title="Kaldır">✕</button>
+      </div>`;
+    }).join('');
+    count.textContent = `${files.length} dosya seçildi`;
+  }
+
+  function initDrop() {
+    const zone = document.getElementById('drop-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      addFiles([...e.dataTransfer.files]);
+    });
+    zone.addEventListener('click', e => {
+      if (e.target.tagName !== 'BUTTON') document.getElementById('file-input').click();
+    });
+    document.getElementById('file-input').addEventListener('change', e => {
+      addFiles([...e.target.files]);
+      e.target.value = '';
+    });
+  }
+
+  // ── TARAMA ─────────────────────────────────────────────
+  async function scan() {
+    if (!files.length) { alert('Lütfen en az bir dosya seçin.'); return; }
+    const fields = getSelectedFields();
+    if (!fields.length) { alert('Lütfen en az bir çıktı alanı seçin.'); return; }
+
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Taranıyor...`;
+
+    const pw = document.getElementById('progress-wrap');
+    pw.style.display = 'block';
+    setProgress(10, 'Dosyalar yükleniyor...');
+    document.getElementById('results-section').style.display = 'none';
+
+    const fd = new FormData();
+    files.forEach(f => fd.append('files', f));
+
+    try {
+      setProgress(35, 'QR kodlar tespit ediliyor...');
+      const res = await fetch('/api/scan', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`Sunucu hatası: ${res.status}`);
+      setProgress(75, 'Veriler işleniyor...');
+      const data = await res.json();
+      lastResults = { ...data, alanlar: fields };
+      setProgress(100, 'Tamamlandı!');
+      setTimeout(() => {
+        renderResults(data, fields);
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg> QR Verilerini Tara`;
+        pw.style.display = 'none';
+      }, 600);
+    } catch (err) {
+      alert('Hata: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = 'QR Verilerini Tara';
+      pw.style.display = 'none';
+    }
+  }
+
+  function setProgress(pct, text) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = text;
+  }
+
+  // ── SONUÇLAR ───────────────────────────────────────────
+  function badge(durum) {
+    if (durum === 'Veri ayrıştırıldı')        return `<span class="badge badge-ok">✓ ${durum}</span>`;
+    if (durum === 'Kısmi veri ayrıştırıldı')  return `<span class="badge badge-part">◑ ${durum}</span>`;
+    if (durum === 'Ham veri alındı')           return `<span class="badge badge-ham">◎ ${durum}</span>`;
+    if (durum === 'QR bulunamadı')             return `<span class="badge badge-none">— ${durum}</span>`;
+    if (durum === 'Desteklenmeyen format')     return `<span class="badge badge-unsup">✗ ${durum}</span>`;
+    if (durum.startsWith('Hata'))             return `<span class="badge badge-error">⚠ ${durum}</span>`;
+    return `<span class="badge badge-none">${durum}</span>`;
+  }
+
+  function renderResults(data, fields) {
+    const o = data.ozet;
+    document.getElementById('summary').innerHTML = `
+      <div class="summary-grid">
+        <div class="sum-card blue"><div class="num">${o.toplam}</div><div class="lbl">Toplam Dosya</div></div>
+        <div class="sum-card green"><div class="num">${o.qr_bulunan}</div><div class="lbl">QR Bulunan</div></div>
+        <div class="sum-card red"><div class="num">${o.qr_bulunamayan}</div><div class="lbl">QR Bulunamayan</div></div>
+        <div class="sum-card yellow"><div class="num">${o.ayristirilan}</div><div class="lbl">Veri Ayrıştırılan</div></div>
+        <div class="sum-card gray"><div class="num">${o.sadece_ham}</div><div class="lbl">Sadece Ham Veri</div></div>
+      </div>`;
+
+    const hdr = ['Dosya Adı', 'Durum', 'QR Sayısı', ...fields.map(f => FIELD_MAP[f] || f)];
+    const rows = data.sonuclar.map(r => {
+      const first = r.veriler && r.veriler.length ? r.veriler[0] : {};
+      const cells = [
+        `<td title="${r.dosya_adi}">${r.dosya_adi}</td>`,
+        `<td>${badge(r.durum)}</td>`,
+        `<td>${r.qr_sayisi || '<span class="dash">—</span>'}</td>`,
+        ...fields.map(f => {
+          const v = first[f] || '';
+          if (!v) return `<td><span class="dash">—</span></td>`;
+          if (f === 'dogrulama_linki') return `<td><a href="${v}" target="_blank" title="${v}">🔗 Aç</a></td>`;
+          return `<td title="${v}">${v}</td>`;
+        }),
+      ];
+      return `<tr>${cells.join('')}</tr>`;
+    }).join('');
+
+    document.getElementById('results-table').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>${hdr.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${rows || '<tr><td colspan="99" style="text-align:center;padding:2rem;color:var(--muted)">Sonuç bulunamadı</td></tr>'}</tbody>
+        </table>
+      </div>`;
+
+    const sec = document.getElementById('results-section');
+    sec.style.display = 'block';
+    sec.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── EXPORT ─────────────────────────────────────────────
+  async function exportExcel() {
+    if (!lastResults) return;
+    const res = await fetch('/api/export/excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lastResults),
+    });
+    const blob = await res.blob();
+    dl(blob, 'qr_sonuclar.xlsx');
+  }
+
+  async function exportCSV() {
+    if (!lastResults) return;
+    const res = await fetch('/api/export/csv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lastResults),
+    });
+    const blob = await res.blob();
+    dl(blob, 'qr_sonuclar.csv');
+  }
+
+  function dl(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  // ── CSS ANIMATION ──────────────────────────────────────
+  const style = document.createElement('style');
+  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+  document.head.appendChild(style);
+
+  // ── INIT ───────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    initFields();
+    initDrop();
+  });
+</script>
+</body>
+</html>
