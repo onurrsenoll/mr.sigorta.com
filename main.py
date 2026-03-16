@@ -1,23 +1,21 @@
-import ctypes
 import io
 import re
 import json
 import csv
+import os
 from typing import List
 from urllib.parse import urlparse, parse_qs
-
-try:
-    ctypes.CDLL("/usr/lib/x86_64-linux-gnu/libzbar.so.0")
-except Exception:
-    pass
 
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from pyzbar import pyzbar
-from PIL import Image, ImageEnhance, ImageFilter
+from fastapi.responses import StreamingResponse
+from PIL import Image
+import cv2
+import numpy as np
 import openpyxl
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI(title="QR Kod Tarama Modülü")
 
@@ -33,23 +31,39 @@ app.add_middleware(
 # ─────────────────────────────────────────────
 
 def decode_from_pil(img: Image.Image) -> list:
-    """Birden fazla stratejiyle QR kod çözmeyi dener."""
-    strategies = [
-        img,
-        img.convert("L"),
-        img.convert("L").resize((img.width * 2, img.height * 2), Image.LANCZOS),
-        ImageEnhance.Contrast(img.convert("L")).enhance(2.0),
-        img.convert("L").filter(ImageFilter.SHARPEN),
-        ImageEnhance.Sharpness(img.convert("L")).enhance(3.0),
-    ]
-    for s in strategies:
+    """OpenCV ile birden fazla stratejiyle QR kod çözmeyi dener."""
+    detector = cv2.QRCodeDetector()
+    found = set()
+
+    base = np.array(img.convert("RGB"))
+    gray = cv2.cvtColor(base, cv2.COLOR_RGB2GRAY)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    big_gray  = cv2.resize(gray,   (gray.shape[1] * 4, gray.shape[0] * 4), interpolation=cv2.INTER_CUBIC)
+    big_thresh = cv2.resize(thresh, (thresh.shape[1] * 4, thresh.shape[0] * 4), interpolation=cv2.INTER_NEAREST)
+    clahe     = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced  = clahe.apply(gray)
+
+    variants = [thresh, big_thresh, gray, big_gray, enhanced, base]
+
+    for v in variants:
         try:
-            codes = pyzbar.decode(s)
-            if codes:
-                return [c.data.decode("utf-8", errors="replace") for c in codes]
+            ok, info, _, _ = detector.detectAndDecodeMulti(v)
+            if ok:
+                for d in info:
+                    if d:
+                        found.add(d)
         except Exception:
-            continue
-    return []
+            pass
+        try:
+            data, _, _ = detector.detectAndDecode(v)
+            if data:
+                found.add(data)
+        except Exception:
+            pass
+        if found:
+            break
+
+    return list(found)
 
 
 def process_image_bytes(data: bytes) -> list:
@@ -386,5 +400,5 @@ async def export_csv(request: Request):
     )
 
 
-# Static files (frontend) — must be last
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# Static files (frontend) — mutlak yol, cPanel uyumlu
+app.mount("/", StaticFiles(directory=os.path.join(BASE_DIR, "static"), html=True), name="static")

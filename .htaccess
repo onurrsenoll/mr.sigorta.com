@@ -1,0 +1,6 @@
+# Büyük dosya yükleme limiti (50MB)
+LimitRequestBody 52428800
+
+# Python App yönlendirmesi — cPanel otomatik ekler ama elle de yazılabilir
+PassengerEnabled on
+PassengerPython /usr/bin/python3
